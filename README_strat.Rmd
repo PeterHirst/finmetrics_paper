@@ -1,0 +1,73 @@
+---
+title: "README"
+output: html_document
+---
+
+# Purpose
+
+```{r}
+rm(list = ls())
+library(rmsfuns)
+source(paste0(getwd(), "/code/LoadPackages.R"))
+source(paste0(getwd(), "/code/CreateVIXStratPlot.R"))
+source(paste0(getwd(), "/code/CreateIVQuintileStratificationDates.R"))
+LoadPackages()
+
+# -------------------------------------------------------- Set Parameters ------------------------------------------------------
+
+SampleOneStartDate <- ymd(20020101)
+SampleOneEndDate <- ymd(20080101)
+SampleTwoStartDate <- ymd(20100101)
+SampleTwoEndDate <- today()
+
+
+# -------------------------------------------------------- Load data ------------------------------------------------------
+
+cur.sample <-
+  read_csv(paste0(getwd(), "/settings/Currencies.csv")) %>% 
+  mutate(Ticker = paste0(Ticker, " Curncy"))
+
+cur.sample.tickers <- cur.sample %>% pull(Ticker)
+
+data.cur <-
+  read_rds(paste0(getwd(), "/Data/Cncy.rds")) %>% 
+  mutate(Period = ifelse(date >= SampleOneStartDate & date <= SampleOneEndDate, "Period_1",
+                         ifelse(date >= SampleTwoStartDate & date <= SampleTwoEndDate, "Period_2", "Other"))) %>% 
+  filter(Period %in% c("Period_1", "Period_2")) %>% filter(Ticker %in% cur.sample.tickers) 
+
+data.str <-
+    read_rds(paste0(getwd(), "/Data/Strat_Series.rds"))
+
+# Make a plot of the vix index to put a picture to those dates you are pulling afterwards
+
+CreateVIXStratPlot(data = data.str, DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                                              SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10, TickerToPlot = "VIX Index")
+
+
+
+vix.high.period1.dates <- CreateIVQuintileStratificationDates(data = data.str %>% filter(Ticker == "VIX Index"), 
+                                                              DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                                              SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10) %>% 
+                                      filter(Period == "Period_1", State == "High") %>% pull(date)
+
+vix.low.period1.dates <- CreateIVQuintileStratificationDates(data = data.str %>% filter(Ticker == "VIX Index"), 
+                                                              DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                                              SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10) %>% 
+                                      filter(Period == "Period_1", State == "Low") %>% pull(date)  
+
+# ------------------------------------------- Currency return calculation -----------------------------------------
+
+Weekly_Ret <- 
+  data.cur %>% group_by(Period, Ticker) %>% 
+  arrange(Ticker, date) %>% 
+  filter(format(date, "%a") == "Wed") %>% 
+  mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
+  mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
+  ungroup()
+
+# Sanity Check --> see if there are gaps in returns - i.e. successive returns are more than a weekly:
+if( nrow(Weekly_Ret %>% group_by(Period, Ticker) %>% filter(date - lag(date) > 7) ) > 0 ) stop("There are gaps in some of the currency returns for weekly frequency. Interrogate.")
+
+
+```
+

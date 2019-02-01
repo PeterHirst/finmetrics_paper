@@ -1,0 +1,21 @@
+﻿Country,Name,Ticker,Group
+Brazil,Real,BRL,BRICS
+Russia,Ruble,RUB,BRICS
+India,Rupee,INR,BRICS
+China,Renminbi,CNY,BRICS
+South Africa,Rand,ZAR,BRICS
+Taiwan,Dollar,TWD,Asia
+Thailand,Baht,THB,Asia
+Philipines,Peso,PHP,Asia
+Singapore,Dollar,SGD,Asia
+Malaysia,Ringgit,MYR,Asia
+South Korea,Won,KRW,Asia
+Mexico,Peso,MXN,South America
+Peru,Sol,PEN,South America
+Columbia,Peso,COP,South America
+Chile,Peso,CLP,South America
+Argentina,Peso,ARS,South America
+Romania,Leu,RON,Eastern Europe
+Bulgaria,Lev,BGN,Eastern Europe
+Czech,Koruna,CZK,Eastern Europe
+Hungary,Forint,HUF,Eastern Europe

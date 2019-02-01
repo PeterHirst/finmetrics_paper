@@ -1,0 +1,260 @@
+---
+title: "README"
+author: "PA HIRST"
+date: "December 3, 2018"
+output: html_document
+---
+# Purpose
+To walk you through the coding and functions for my financial econometrics paper, which models currency co-movement during different periods of global uncertainty. Please refer to the "Hirst.pdf" file for the full paper. This README is purely an account of the functions and code.
+I have included the simple stuff as well, such as loading data.
+
+The functions below do some of the preliminary calculations needed:
+```{r returns calcs}
+Weekly_Ret <- 
+currencies %>% arrange(date, Ticker) %>% group_by(Ticker) %>% 
+  filter(format(date, "%a") == "Wed") %>% 
+  mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
+  mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
+  ungroup()
+
+# Sanity Check --> see if there are gaps in returns - i.e. successive returns are more than a weekly:
+if( nrow(Weekly_Ret %>% group_by(Ticker) %>% filter(date - lag(date) > 7) ) > 0 ) stop("There are gaps in some of the currency returns for weekly frequency. Interrogate.")
+
+# A few plots
+# ZAR weekly returns over time:
+Weekly_Ret %>% filter(Ticker == "ZAR Curncy") %>% ggplot() + geom_line(aes(date, Weekly_Return))
+
+
+```
+One then needs to load the data and subset the sample, as we divide the sample in two.
+```{r load data & subset}
+# -------------------------------------------------------- Set Parameters ------------------------------------------------------
+
+SampleOneStartDate <- ymd(20020101)
+SampleOneEndDate <- ymd(20080101)
+SampleTwoStartDate <- ymd(20100101)
+SampleTwoEndDate <- today() # this part allows the paper to be fully updated as the data is updated on a daily basis.
+
+
+# -------------------------------------------------------- Load data ------------------------------------------------------
+
+# creates the sample of countries and places them in groups (BRICS, etc)
+cur.sample <-
+  read_csv(paste0(getwd(), "/settings/Currencies.csv")) %>% 
+  mutate(Ticker = paste0(Ticker, " Curncy"))
+
+cur.sample.tickers <- cur.sample %>% pull(Ticker)
+
+# loads the currency data
+data.cur <-
+  read_rds(paste0(getwd(), "/Data/Cncy.rds")) %>% 
+  mutate(Period = ifelse(date >= SampleOneStartDate & date <= SampleOneEndDate, "Period_1",
+                         ifelse(date >= SampleTwoStartDate & date <= SampleTwoEndDate, "Period_2", "Other"))) %>% 
+  filter(Period %in% c("Period_1", "Period_2")) %>% filter(Ticker %in% cur.sample.tickers) 
+
+# loads the data which is to be stratified (global uncertainty indices)
+data.str <-
+    read_rds(paste0(getwd(), "/Data/Strat_Series.rds"))
+```
+
+In order to do the data stratification (for the uncertainty indices, such as VIX), the following functions are written. Most of the explanations are contained in the code chunks, as comments. 
+
+The function below creates the stratification dates, which will allow us to compare the sample correlations with those during periods of high/low uncertainty
+```{r stratification code}
+CreateIVQuintileStratificationDates <- function(data, DistributionSplit, SampleOneStartDate, SampleOneEndDate, SampleTwoStartDate, SampleTwoEndDate, MinTradeDays, NoTradeDaysToMinusBeg){
+  
+  # This function returns dates for periods of high and low implied volatility according to quintiles (Top 20% and bottom 20% of distribution)
+  # It is only suitable for implied and realized volatility indices/series
+  # The distribution split is parameterized so you can change it from quintiles to quantiles for example.
+  # MinTradeDays -- Minimum number of trading days the VIX must breach to top or bottom quntile
+  # NoTradeDaysToMinusBeg -- number of trading days to minus at the beginning to allow correlation to adjust
+  
+  # INPUT data -- a dataframe with the series eg. VIX that is in tidy format and looks like this: date, Ticker, Value
+  
+  Upper <- 1 - DistributionSplit
+
+  df.strat <-
+    data %>% filter(!is.na(Value)) %>%
+    mutate(Period = ifelse(date >= SampleOneStartDate & date <= SampleOneEndDate, "Period_1", 
+                           ifelse(date >= SampleTwoStartDate & date <= SampleTwoEndDate, "Period_2", "Other"))) %>% 
+    filter(Period %in% c("Period_1", "Period_2")) %>% 
+    group_by(Period) %>% 
+    arrange(date) %>% 
+    mutate(Q1 = quantile(Value, probs = DistributionSplit, na.rm = TRUE),
+           Q2 = quantile(Value, probs = Upper, na.rm = TRUE)) %>% 
+    mutate(State = ifelse(Value < Q1, "Low",
+                          ifelse(Value < Q2, "Middle", "High"))) %>% 
+    mutate(Change = ifelse(State != lag(State), row_number(), NA)) %>% 
+    mutate(Change = ifelse(date == first(date), 1, Change)) %>% 
+    tidyr::fill(Change, .direction = "down") %>% filter(State != "Middle") %>% 
+    group_by(Period, Change) %>% mutate(NoTradingDays = n(), RowNum = row_number()) %>% 
+    ungroup() %>% filter(NoTradingDays >= MinTradeDays) %>% filter(RowNum >= NoTradeDaysToMinusBeg) %>% 
+    select(date, Ticker, Period, State)
+  
+  df.strat  
+  
+}
+```
+
+This function then uses the stratification function above, to plot the VIX and then shade the stratified dates. These dates are for the top (high VIX) and bottom (low VIX) quintiles.
+```{r Strat plot}
+CreateVIXStratPlot <- function(data, DistributionSplit, SampleOneStartDate, SampleOneEndDate, SampleTwoStartDate, SampleTwoEndDate, MinTradeDays, NoTradeDaysToMinusBeg, TickerToPlot){
+  
+  Upper <- 1 - DistributionSplit
+  
+  data <-
+    data %>% 
+    filter(!is.na(Value)) %>%
+    filter(Ticker == TickerToPlot)    
+  
+  data.q <-
+    data %>% 
+    mutate(Period = ifelse(date >= SampleOneStartDate & date <= SampleOneEndDate, "Period_1", 
+                           ifelse(date >= SampleTwoStartDate & date <= SampleTwoEndDate, "Period_2", "Other"))) %>% 
+    filter(Period %in% c("Period_1", "Period_2")) %>% 
+    group_by(Period) %>% 
+    arrange(date) %>% 
+    mutate(Q1 = quantile(Value, probs = DistributionSplit, na.rm = TRUE),
+           Q2 = quantile(Value, probs = Upper, na.rm = TRUE)) %>% 
+    mutate(State = ifelse(Value < Q1, "Low",
+                          ifelse(Value < Q2, "Middle", "High"))) %>% 
+    ungroup()
+  
+  df.strat <-
+    data.q %>% 
+    group_by(Period) %>% 
+    mutate(Change = ifelse(State != lag(State), row_number(), NA)) %>% 
+    mutate(Change = ifelse(date == first(date), 1, Change)) %>% 
+    tidyr::fill(Change, .direction = "down") %>% filter(State != "Middle") %>% 
+    group_by(Period, Change) %>% mutate(NoTradingDays = n(), RowNum = row_number()) %>% 
+    ungroup() %>% filter(NoTradingDays >= MinTradeDays) %>% filter(RowNum >= NoTradeDaysToMinusBeg)
+  
+  df.1 <-
+    df.strat %>% filter(Period == "Period_1") %>% 
+    group_by(Change) %>% filter(date == first(date) | date == last(date)) %>% 
+    mutate(DateType = ifelse(date == first(date), "StartDate", "EndDate")) %>% 
+    select(Change, date, DateType) %>% 
+    spread(DateType, date) %>% ungroup()
+  
+  df.2 <-
+    df.strat %>% filter(Period == "Period_2") %>% 
+    group_by(Change) %>% filter(date == first(date) | date == last(date)) %>% 
+    mutate(DateType = ifelse(date == first(date), "StartDate", "EndDate")) %>% 
+    select(Change, date, DateType) %>% 
+    spread(DateType, date) %>% ungroup()
+  
+  g <-
+    ggplot(data %>% filter(date >= SampleOneStartDate)) + geom_line(aes(x = date, y = Value), color = "steelblue") + 
+    geom_line(data = data.q %>% filter(Period == "Period_1"), aes(date, Q1)) +
+    geom_line(data = data.q %>% filter(Period == "Period_2"), aes(date, Q1)) +
+    geom_line(data = data.q %>% filter(Period == "Period_1"), aes(date, Q2)) +
+    geom_line(data = data.q %>% filter(Period == "Period_2"), aes(date, Q2)) +
+    geom_rect(data = df.1, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='red', alpha=0.2) +
+    geom_rect(data = df.2, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='red', alpha=0.2) +
+    labs(x = NULL, y = NULL) +
+    theme_bw() 
+  
+  g
+  
+}
+```
+
+The following code chunks create the conditional volatility and DCC plots:
+```{r VOLplots}
+# BRICS
+ggplot(vol.df %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+# Asia
+ggplot(vol.df %>% filter(Group == "Asia")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+# South America
+ggplot(vol.df %>% filter(Group == "South America")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+# Eastern Europe
+ggplot(vol.df %>% filter(Group == "Eastern Europe")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+```
+
+```{r DCCplots}
+# BRICS
+g.corr.brics <-
+  ggplot(df.corr %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+# Asia
+g.corr.asia <- 
+  ggplot(df.corr %>% filter(Group == "Asia")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+# South America
+g.corr.southamerica <-
+  ggplot(df.corr %>% filter(Group == "South America")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+# Eastern Europe
+g.corr.easterneurope <-
+  ggplot(df.corr %>% filter(Group == "Eastern Europe")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+```
+
+The final code contains the calculations needed to conclude whether EM currencies are indeed more closely correlated than the other 
+```{r correlation_calcs}
+
+```
+

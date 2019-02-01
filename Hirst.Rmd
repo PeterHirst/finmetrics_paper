@@ -1,0 +1,471 @@
+---
+title: "Emerging Market Currency Comovement: an analysis of conditional correlations before and after the GFC and during periods of heightened economic uncertainty"
+Author1: Peter Hirst
+Author2: Charlotte van Tiddens
+output:
+  pdf_document:
+    fig_height: 3.5
+    fig_width: 3.5
+    include:
+      in_header: Tex/packages.txt
+    keep_tex: no
+    template: Tex/TexDefault.txt
+  word_document: default
+  html_document:
+    df_print: paged
+CommonAffiliation_12: no
+Email1: peterhirst01\@gmail.com
+Email2: charlottevt08\@gmail.com
+HardSet_layout: yes
+JELCodes: L250 \sep L100
+Journal: Journal of Finance
+Ref1: Stellenbosch University, South Africa
+Ref2: Prescient Securities, Cape Town, South Africa
+RemovePreprintSubmittedTo: yes
+abstract: |
+  This paper analyses emerging market (EM) currency co-movement, during different periods of global uncertainty. After stratifying the data for periods of high and low uncertainty using the CBOE Volatility Index (VIX), we use Dynamic Conditional Correlation (DCC), proposed by @engle2002 to compare co-movement during these periods to the sample average. The aim is to uncover crucial dynamics between these currencies, specifically between the South African Rand (ZAR) and other currencies. The main purpose for the study is that these correlations directly influence investors and currency traders. Using EM currency data from four groups of economies from 2002 to 2018, the paper finds that find that conditional correlations increase significantly following the financial crisis. However, we do not find significant differences during periods of high and low uncertainty. Currency traders should thus look to other factors than the VIX when making EM currency investment decisions. 
+addfootrule: yes
+addtoprule: yes
+bibliography: Tex/ref.bib
+bottom: 2
+documentclass: elsarticle
+fontsize: 11pt
+keywords: Currency co-movement \sep Global uncertainty \sep EMEs \sep DCC \sep GARCH
+linenumbers: no
+linestretch: 1.2
+link-citations: yes
+margin: 2.3
+numbersections: yes
+BottomRFooter: \footnotesize Page \thepage\
+subtitle: Financial econometrics 871
+AddTitle: yes
+toc: no
+top: 2.5
+---
+
+<!-- First: Set your default preferences for chunk options: -->
+
+<!-- If you want a chunk's code to be printed, set echo = TRUE. message = FALSE stops R printing ugly package loading details in your final paper too. I also suggest setting warning = FALSE and checking for warnings in R, else you might find ugly warnings in your paper. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos="H", fig.pos = 'H')
+# Note: Include = FALSE implies the code is executed, but not printed in your pdf.
+# warning and message = FALSE implies ugly messages and warnings are removed from your pdf. These should be picked up when you execute the command chunks (code sections below) in your rmd, not printed in your paper!
+
+```
+
+
+```{r include=FALSE}
+rm(list = ls())
+source(paste0(getwd(), "/code/LoadPackages.R"))
+source(paste0(getwd(), "/code/CreateVIXStratPlot.R"))
+source(paste0(getwd(), "/code/CreateIVQuintileStratificationDates.R"))
+LoadPackages()
+
+# -------------------------------------------------------- Set Parameters ------------------------------------------------------
+SampleOneStartDate <- ymd(20020101)
+SampleOneEndDate <- ymd(20080101)
+SampleTwoStartDate <- ymd(20100101)
+SampleTwoEndDate <- today()
+# -------------------------------------------------------- Load data ------------------------------------------------------
+
+cur.sample <-
+  read_csv(paste0(getwd(), "/settings/Currencies.csv")) %>% 
+  mutate(Ticker = paste0(Ticker, " Curncy"))
+
+cur.sample.tickers <- cur.sample %>% pull(Ticker)
+
+data.cur <-
+  read_rds(paste0(getwd(), "/Data/Cncy.rds")) %>% 
+  mutate(Period = ifelse(date >= SampleOneStartDate & date <= SampleOneEndDate, "Period_1",
+                         ifelse(date >= SampleTwoStartDate & date <= SampleTwoEndDate, "Period_2", "Other"))) %>% 
+  filter(Period %in% c("Period_1", "Period_2")) %>% filter(Ticker %in% cur.sample.tickers) 
+
+data.str <-
+    read_rds(paste0(getwd(), "/Data/Strat_Series.rds"))
+
+# -------------------------------------------------------- Calculate Returns ------------------------------------------------------
+source("code/WeeklyReturnFunction.R")
+Weekly_Ret <- WeeklyReturnFunction(data = data.cur)
+
+if( nrow(Weekly_Ret %>% group_by(Period, Ticker) %>% filter(date - lag(date) > 7) ) > 0 ) stop("There are gaps in some of the currency returns for weekly frequency. Interrogate.")
+
+#======================================================================== GARCH Models
+# Volatility
+source("code/VolScripts.R")
+# DCC
+source("code/DCCModelsScript.R")
+
+#===============================================================================
+# Correlation plots
+#===============================================================================
+g.corr.brics <-
+  ggplot(df.corr %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+g.corr.asia <- 
+  ggplot(df.corr %>% filter(Group == "Asia")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+g.corr.southamerica <-
+  ggplot(df.corr %>% filter(Group == "South America")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+g.corr.easterneurope <-
+  ggplot(df.corr %>% filter(Group == "Eastern Europe")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6) + 
+  facet_wrap(~Period, scales = "free") + 
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  labs(x = NULL)
+
+
+# --------------------------------------------- Create Strat Dates ---------------------------------------------------
+
+source("code/CreateVIXDates.R") 
+
+# ----------Correlations calcs
+source("code/CorrelationCalcs.R")
+
+```
+
+
+<!-- ############################## -->
+<!-- # Start Writing here: -->
+<!-- ############################## -->
+
+# Introduction \label{Introduction}
+The purpose of this paper is to model the co-movement between EM currencies, during differing periods of uncertainty. We employ @engle2002's Dynamic Conditional Correlation (DCC) model, to describe time-varying correlation and volatility. The main aim of the study to see whether currencies are more closely correlated during heightened global uncertainty. However more generally, the paper discusses the relationships between ZAR and other groups of EM currencies. Our focus is on the _ZAR's_ correlation with the rest of the currencies in our sample. Naturally, our question has important consequences for currency traders, which provides good motivation to investigate the topic in more detail. For instance, if the ZAR is strongly positively (negatively) correlated with the Brazilian Real (BRL) when the VIX is higher than usual, then it would be sensible to sell (buy) BRL, as a diversification strategy.
+
+The layout of the rest of this paper is as follows: section \ref{lit_review} discusses relevant literature concerning financial contagion and currency correlation. Section \ref{data} discusses the data used and section \ref{methodology} describes the methodology used to model currency co-movement. Section \ref{results} reports the results and section \ref{conclusion} concludes and provides some recommendations to fund managers.
+
+# Literature review \label{lit_review}
+ 
+# Data \label{data} 
+The data includes EM currencies from 2002 to 2018. The currencies are grouped into four categories, namely BRICS, Asia, South America and Eastern Europe.^[This grouping convention is drawn from @katzke2017.] Although the data is of daily frequency, we calculate the weekly returns to avoid the noise present in currency returns. Note that given the use of currency data, a positive return is synonymous with "depreciation", whereas a negative return is synonymous with a "depreciation". Furthermore, all currencies are measured relative to the United States dollar (USD). 
+
+Table \ref{tabsumstats} in the appendix reports the summary statistics (mean and standard deviation) for all of the currencies in our sample.^[Refer to table \ref{tabsample} in the appendix for the full list of currencies considered.] The summary statistics suggests that currency values (quotes) relative to the USD vary greatly, whereas the average weekly returns (and their corresponding standard deviations) are generally very low. This makes sense given that the weekly return calculation strips out the noise present in daily returns.
+
+In this paper, we stratify the data according to differing periods of uncertainty. To gain an idea of how this looks in practice, see figure \ref{figVIX} which plots the VIX over the full sample period. The black lines distinguish the top and bottom quintiles from the rest, which is crucial for our calculations. Specifically, all observations above the black line are classified as "high uncertainty" and all observations below the black line are classified as "low uncertainty". We make this explicit by shading the dates which are pulled by stratification. We then compare correlations during these periods with average correlations during the full sample period. 
+```{r figVIX, fig.align='center', fig.cap="VIX \\label{figVIX}", fig.height=3, fig.width=6} 
+# Make a plot of the vix index to put a picture to those dates you are pulling afterwards
+
+CreateVIXStratPlot(data = data.str, DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                                              SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10, TickerToPlot = "VIX Index")
+
+
+
+
+```
+Figure \ref{figVIX} emphasises the spike in the VIX during the global financial crisis (GFC), which led to unprecedented effects on global capital markets. This motivates us to omit these dates from our analysis as we do not want this to bias our DCC estimates.
+
+# Methodology \label{methodology}
+This section discusses the theory behind the correlation estimates, namely DCC. We use the GARCH-DCC approach, first proposed by @engle2002.^['GARCH' refers to generalized autoregressive conditional heteroskedasticity.] A major benefit of this method is that large correlation matrices can be estimated, given the flexibility of univariate GARCH processes. This is why @engle2002's method is preferred for our correlation estimates. The GARCH-DCC approach is conducted by estimating univariate GARCH models after which the correlation estimate is computed. Hence, the process comprises two steps which are discussed in this section. Section \ref{garch} defines GARCH models, whereas section \ref{dcc} discusses DCC estimation. Frequent reference is made to @engle2002 throughout.
+
+## GARCH models \label{garch}
+To generalise univariate GARCH models to the multivariate sphere is a simple task. Given the stochastic process of financial returns, $x_t$ ($t=1,2,...T$), with dimension $N \times 1$ and mean vector $\mu_t$ and given the information set $I_{t-1}$, we can write $x_t \left| I_{t - 1} \right.$ as follows:
+\begin{align} \label{eq:mgarch1}
+x_t \left| I_{t - 1} \right. = \mu_t + \varepsilon_t,
+\end{align}
+
+where the residuals of the process are modelled as:
+  
+  \begin{align} \label{eq:mgarch2}
+\varepsilon_t = H_{t}^{1/2}z_t.
+\end{align}
+
+$H_t^{1/2}$ above is an $N\times N$ positive definite matrix such that ${H_t}$ is the conditional covariance matrix of ${x_t}$. ${z_t}$ is an $N\times 1$ independent and identically distributed series, with a mean of zero and a variance of one.
+
+## DCC Models \label{dcc_methodology}
+
+As previously mentioned, DCC models offer a simple and more parsimonious means of doing multivariate volatility modelling. In particular, it relaxes the constraint of a fixed correlation structure, which is assumed by the constant conditional correlation (CCC) model, to allow for estimates of time-varying correlation.
+
+The DCC model can be defined as:
+  
+  \begin{equation} \label{dcc}
+H_t = D_t.R_t.D_t.
+\end{equation}
+
+Equation \ref{dcc} splits the variance-covariance matrix into identical diagonal matrices ($D_t$) and an estimate of the time-varying correlation ($R_t$). Estimating $R_t$ (which is the correlation matrix) requires it to be inverted at each estimated period, and thus a proxy equation is used:
+  
+  \begin{align}  \label{dcc_2}
+Q_{ij,t} &= \bar Q + a\left(z_{t - 1}z'_{t - 1} - \bar{Q} \right) + b\left( Q_{ij, t - 1} - \bar{Q} \right) \hfill \\ \notag
+                            &= (1 - a - b)\bar{Q} + az_{t - 1}z'_{t - 1} + b.Q_{ij, t - 1} \notag
+                            \end{align} 
+                            
+Equation \ref{dcc_2} has a similar structure to a GARCH(1,1) process, with non-negative scalars $a$ and $b$. Furthermore, $Q_{ij, t}$ is the unconditional (sample) variance estimate between series $i$ and $j$ and $\bar{Q}$ is the unconditional matrix of standardized residuals from each univariate pair estimate.
+
+Next, we use equation \ref{dcc_2} to estimate $R_t$ (the conditional correlation matrix), which is expressed as: 
+  
+  \begin{align}\label{eq:dcc_3}
+R_t &= diag(Q_t)^{-1/2}Q_t.diag(Q_t)^{-1/2}. 
+\end{align}
+
+Equation \ref{eq:dcc_3} has bivariate elements:
+  
+  \begin{align}
+R_t &= \rho_{ij,t} = \frac{q_{i,j,t}}{\sqrt{q_{ii,t}.q_{jj,t}}} 
+\end{align}
+
+
+The resulting DCC model is then formulated statistically as:
+
+  \begin{align}
+\varepsilon_t &\thicksim  N(0,D_t.R_t.D_t) \notag \\
+D_t^2 &\thicksim \text{Univariate GARCH(1,1) processes $\forall$ (i,j), i $\ne$ j} \notag \\
+z_t&=D_t^{-1}.\varepsilon_t \notag \\
+Q_t &= \bar{Q}(1-a-b)+a(z_t'z_t)+b(Q_{t-1}) \notag \\
+                        R_t &= Diag(Q_t^{-1}).Q_t.Diag({Q_t}^{-1}) \notag \\
+                        \end{align}
+
+# Dynamic Conditional Correlations
+Next we use the methodology discussed in section \ref{methodology} to estimate the dynamic conditional correlations.^[We omit China and Malaysia for Period 1 because their currencies were pegged to the USD until approximately 2005. Their inclusion induces zero returns for Period 1.] Our focus is on the bivariate correlation between ZAR and the rest of the currencies in the sample. However, in this section we only report the results for the BRICS economies. The full set of results is contained in the appendix.
+
+Using the univariate GARCH methodology, figure \ref{bricsvol} plots the conditional volatilities for all BRICS currencies for both periods. 
+```{r volplotbrics, warning=FALSE, fig.align='center', fig.cap="BRICS conditional volatility \\label{bricsvol}", fig.height=3, fig.width=6}
+ggplot(vol.df %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+```
+Figure \ref{bricsvol} suggests that prior to the financial crisis (Period 1), the BRL was the most volatile BRICS currency whereas the ZAR was the most stable of the group. However, the story changed somewhat in the post-crisis era (Period 2): the Chinese Renminbi (CNY), no longer pegged to the USD, remained the most stable currency of the group, whereas the ZAR and remaining BRICS currencies became markedly more volatile. The results suggest that the most volatile currency groupings are BRICS and South America.
+
+Turning to the DCC estimations, figure \ref{bricsdcc} plots the ZAR's dynamic conditional correlation with the other BRICS currencies.
+```{r dccplotbrics, warning=FALSE, fig.align='center', fig.cap="BRICS dynamic conditional correlation \\label{bricsdcc}", fig.height=3, fig.width=6}
+print(g.corr.brics)
+```
+The pre-crisis estimations suggest seemingly constant correlation over the period at approximately $0.25$ (one might argue in favour of a slight increase in correlation in Period 1). Following the crisis, correlations doubled all except for the CNY which had recently switched to a flexible exchange rate regime. The plot clearly shows the ZAR being most highly correlated with the BRL, Russian Ruble (RUB) and Indian Rupee (INR), respectively. These three bivariate correlations hover around the $0.50$ mark, which implies that a two per cent appreciation in the ZAR results in a one per cent appreciation in the BRL, RUB and INR, on average. This is indeed a high correlation.
+
+An interesting note on the DCC results^[See the appendix (section \ref{appendix}).] is that Period 2 conditional correlations seem higher than Period 1. This could suggest a structural change in EM currency correlations following the financial crisis. * Discuss the QE effects on co-movement.
+
+To see whether the correlations increase during times of heightened uncertainty, we plot the DCC estimations and overlay the dates which we consider as 'high-VIX' and 'low-VIX'. Figure \ref{bricsvix} suggests that we should not downplay an increase in correlation during 'high-VIX' periods. This follows as eyeballing the figure could suggest that correlations creep up during more uncertain times.
+```{r, dccplotvix, warning=FALSE, fig.align='center', fig.cap="BRICS dynamic conditional correlation \\label{bricsvix}", fig.height=3, fig.width=6}
+ggplot(df.corr %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
+  geom_rect(data = High.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.4) +
+  geom_rect(data = Low.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='palegreen4', alpha=0.2) +
+  facet_wrap(~Period, scales = "free") +
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, caption = "Green: high VIX, red: low VIX")
+```
+
+
+However, when calculating average sample correlations, as well as these correlations for high and low-VIX periods, we do not find significant differences in these periods.^[Table \ref{pairwise} in the appendix contains the average pairwise correlations, for the full sample and during times of high and low uncertainty.] Hence, we must conclude that the ZAR is _not_ more closely correlated with other EM currencies when the VIX is in its top quintile (or in the bottom quintile, for that matter). What we do find, however, is that following the GFC, EM currencies became much more correlated than before.
+
+# Conclusion \label{conclusion}
+[Conclusion to be written here.]
+\newpage
+
+# Appendix \label{appendix}
+
+## Summary statistics
+```{r sumstats, results='asis'}
+
+df.summary.stats <- 
+    data.cur %>% group_by(Period, Ticker) %>%  arrange(date, Ticker) %>%
+    filter(format(date, "%a") == "Wed") %>% 
+    mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
+    mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
+    ungroup() %>% group_by(Ticker) %>% 
+    summarise(MeanValue = mean(Value), SdValue = sd(Value), 
+    MeanReturns = mean(Weekly_Return), SdReturns = sd(Weekly_Return))
+
+df.sum.stats <- 
+  xtable(df.summary.stats, caption = "Summary statistics: currency data \\label{tabsumstats}")
+
+print.xtable(df.sum.stats, 
+              tabular.environment = "longtable",
+             floating = FALSE,
+             table.placement = 'H', 
+             # scalebox = 0.3, 
+             comment = FALSE,
+             caption.placement = 'bottom'
+             )
+```
+
+## List of currencies considered
+```{r tabsample, results= 'asis'}
+df.sample <- xtable(cur.sample, caption = "Currencies considered \\label{tabsample}")
+
+print.xtable(df.sample, 
+              tabular.environment = "longtable",
+             floating = FALSE,
+             table.placement = 'H', 
+             # scalebox = 0.3, 
+             comment = FALSE,
+             caption.placement = 'bottom'
+             )
+```
+
+## Volatility plots
+
+```{r vol1, warning=FALSE, fig.align='center', fig.cap="BRICS Conditional Volatility \\label{vol.brics}", fig.height=3, fig.width=6}
+
+ggplot(vol.df %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+```
+
+```{r vol2, warning=FALSE, fig.align='center', fig.cap="Asia Conditional Volatility \\label{vol.asia}", fig.height=3, fig.width=6, include=TRUE}
+ggplot(vol.df %>% filter(Group == "Asia")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+
+```
+
+```{r vol3, warning=FALSE, fig.align='center', fig.cap="South America Conditional Volatility \\label{vol.south.america}", fig.height=3, fig.width=6, include=TRUE}
+
+ggplot(vol.df %>% filter(Group == "South America")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+
+```
+
+```{r vol4, warning=FALSE, fig.align='center', fig.cap="Eastern Europe Conditional Volatility \\label{vol.europe}", fig.height=3, fig.width=6, include=TRUE}
+
+ggplot(vol.df %>% filter(Group == "Eastern Europe")) + 
+  geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
+  theme_bw() + facet_wrap(~Period, scales = "free") +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") + 
+  ylim(0, 0.05) +
+  labs(x = NULL)
+
+
+```
+## Dynamic Conditional Correlations
+```{r dcc1, warning=FALSE, fig.align='center', fig.cap="ZAR-BRICS DCC \\label{dcc1}", fig.height=3, fig.width=6, include=TRUE}
+  print(g.corr.brics)
+```
+```{r dcc2, warning=FALSE, fig.align='center', fig.cap="ZAR-Asia DCC \\label{dcc2}", fig.height=3, fig.width=6, include=TRUE}
+print(g.corr.asia)
+```
+```{r dcc3, warning=FALSE, fig.align='center', fig.cap="ZAR-South America DCC \\label{dcc3}", fig.height=3, fig.width=6, include=TRUE}
+print(g.corr.southamerica)
+```
+```{r dcc4, warning=FALSE, fig.align='center', fig.cap="ZAR-Eastern Europe DCC\\label{dcc4}", fig.height=3, fig.width=6, include=TRUE}
+print(g.corr.easterneurope)
+```
+## Dynamic Conditional Correlations (uncertainty overlayed)
+```{r dcc5, warning=FALSE, fig.align='center', fig.cap="ZAR-BRICS DCC\\label{dcc5}", fig.height=3, fig.width=6, include=TRUE}
+ggplot(df.corr %>% filter(Group == "BRICS")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
+  geom_rect(data = High.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.4) +
+  geom_rect(data = Low.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='palegreen4', alpha=0.2) +
+  facet_wrap(~Period, scales = "free") +
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, caption = "Green: high VIX, red: low VIX")
+```
+```{r dcc6, warning=FALSE, fig.align='center', fig.cap="ZAR-Asia DCC \\label{dcc5}", fig.height=3, fig.width=6, include=TRUE}
+ggplot(df.corr %>% filter(Group == "Asia")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
+  geom_rect(data = High.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.4) +
+  geom_rect(data = Low.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='palegreen4', alpha=0.2) +
+  facet_wrap(~Period, scales = "free") +
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, caption = "Green: high VIX, red: low VIX")
+```
+```{r dcc7, warning=FALSE, fig.align='center', fig.cap="ZAR-South America DCC \\label{dcc7}", fig.height=3, fig.width=6, include=TRUE}
+ggplot(df.corr %>% filter(Group == "South America")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
+  geom_rect(data = High.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.4) +
+  geom_rect(data = Low.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='palegreen4', alpha=0.2) +
+  facet_wrap(~Period, scales = "free") +
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, caption = "Green: high VIX, red: low VIX")
+```
+```{r dcc8, warning=FALSE, fig.align='center', fig.cap="ZAR-Eastern Europe DCC\\label{dcc8}", fig.height=3, fig.width=6, include=TRUE}
+ggplot(df.corr %>% filter(Group == "Eastern Europe")) + 
+  geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
+  geom_rect(data = High.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.4) +
+  geom_rect(data = Low.VIX, aes(xmin = StartDate, xmax = EndDate, ymin=-Inf, ymax=+Inf), fill='palegreen4', alpha=0.2) +
+  facet_wrap(~Period, scales = "free") +
+  ylim(-0.1, 1) +
+  theme_bw() +
+  theme(text = element_text(size = 10), axis.text = element_text(size = 10, hjust = 1, angle = 90),
+        plot.title = element_text(size = 10)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, caption = "Green: high VIX, red: low VIX")
+```
+
+## Average pairwise correlations
+```{r corrtable, results='asis'}
+df.corr.vix.print <- 
+  xtable(df.corr.vix, caption = "Average pairwise correlations \\label{pairwise}")
+
+print.xtable(df.corr.vix.print, 
+              tabular.environment = "longtable",
+             floating = FALSE,
+             table.placement = 'H', 
+             # scalebox = 0.3, 
+             comment = FALSE,
+             caption.placement = 'bottom'
+             )
+```
+
+\newpage
+# References
+
