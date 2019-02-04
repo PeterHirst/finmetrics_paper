@@ -1,4 +1,4 @@
-
+library(tidyverse)
 # =========================
 # Period 1
 # =========================
@@ -17,7 +17,7 @@ df.corr.vix <-
             df.corr %>% filter(date %in% c(vix.low.period1.dates, vix.low.period2.dates)) %>% group_by(Pairs, Period) %>% 
               summarise(Average_Low_VIX = mean(Rho, na.rm = TRUE)) %>% ungroup(), by = c("Pairs", "Period")) %>% 
   select(Pairs, Period, Group, Country, Average_Period_Corr, Average_High_VIX, Average_Low_VIX) %>% unique() %>% 
-  arrange(Group) %>% rename(Sample_average = Average_Period_Corr, HighVIX = Average_High_VIX, LowVIX = Average_Low_VIX)
+  arrange(Group, Country) %>% rename(SampleAverage = Average_Period_Corr, HighVIX = Average_High_VIX, LowVIX = Average_Low_VIX)
 
 # VIX dataframes
 High.VIX <-

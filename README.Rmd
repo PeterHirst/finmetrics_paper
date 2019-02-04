@@ -8,28 +8,29 @@ output: html_document
 To walk you through the coding and functions for my financial econometrics paper, which models currency co-movement during different periods of global uncertainty. Please refer to the "Hirst.pdf" file for the full paper. This README is purely an account of the functions and code.
 I have included the simple stuff as well, such as loading data.
 
-The functions below do some of the preliminary calculations needed:
-```{r returns calcs}
-Weekly_Ret <- 
-currencies %>% arrange(date, Ticker) %>% group_by(Ticker) %>% 
-  filter(format(date, "%a") == "Wed") %>% 
-  mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
-  mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
-  ungroup()
+## Load data
 
-# Sanity Check --> see if there are gaps in returns - i.e. successive returns are more than a weekly:
-if( nrow(Weekly_Ret %>% group_by(Ticker) %>% filter(date - lag(date) > 7) ) > 0 ) stop("There are gaps in some of the currency returns for weekly frequency. Interrogate.")
+Firstly, this function is responsible for loading some core packages needed for the project code:
+```{r load packages}
 
-# A few plots
-# ZAR weekly returns over time:
-Weekly_Ret %>% filter(Ticker == "ZAR Curncy") %>% ggplot() + geom_line(aes(date, Weekly_Return))
-
-
+LoadPackages <- function(){
+  
+  library(rmsfuns)
+  
+  corepacks <- c("tidyverse", "RcppRoll", "ggplot2", "lubridate",
+                 "ggthemes", "purrr", "tbl2xts", "xts", "MTS", "devtools", "rugarch", "forecast", "PerformanceAnalytics", "xtable")
+  
+  load_pkg(corepacks)
+  
+}
 ```
-One then needs to load the data and subset the sample, as we divide the sample in two.
+
+
+Then, load the data and subset the sample (pre and post-crisis).
 ```{r load data & subset}
 # -------------------------------------------------------- Set Parameters ------------------------------------------------------
 
+# create the start and end dates of the two periods
 SampleOneStartDate <- ymd(20020101)
 SampleOneEndDate <- ymd(20080101)
 SampleTwoStartDate <- ymd(20100101)
@@ -57,9 +58,28 @@ data.str <-
     read_rds(paste0(getwd(), "/Data/Strat_Series.rds"))
 ```
 
-In order to do the data stratification (for the uncertainty indices, such as VIX), the following functions are written. Most of the explanations are contained in the code chunks, as comments. 
+## Functions
 
-The function below creates the stratification dates, which will allow us to compare the sample correlations with those during periods of high/low uncertainty
+The function below calculates the weekly returns of the currencies in our sample, simply feed the data into the function and the returns are calculated:
+```{r weekly return function}
+WeeklyReturnFunction <- function(data){
+  
+  df <-
+    data %>% arrange(date, Ticker) %>% group_by(Period, Ticker) %>%
+    filter(format(date, "%a") == "Wed") %>% 
+    mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
+    mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
+    ungroup()
+  
+  df # print the dataframe 
+  
+}
+
+```
+
+In order to stratify the data, the following functions are written. Most of the explanations are contained in the code chunks, as comments. In our paper, we stratify the CBOE Volatility Index (VIX).
+
+This function creates the stratification dates, which will allow us to compare the sample correlations with those during periods of high/low uncertainty:
 ```{r stratification code}
 CreateIVQuintileStratificationDates <- function(data, DistributionSplit, SampleOneStartDate, SampleOneEndDate, SampleTwoStartDate, SampleTwoEndDate, MinTradeDays, NoTradeDaysToMinusBeg){
   
@@ -96,7 +116,7 @@ CreateIVQuintileStratificationDates <- function(data, DistributionSplit, SampleO
 }
 ```
 
-This function then uses the stratification function above, to plot the VIX and then shade the stratified dates. These dates are for the top (high VIX) and bottom (low VIX) quintiles.
+This function then uses the stratification function above, to plot the VIX and then shade the stratified dates. These dates are for the top (high VIX) and bottom (low VIX) quantiles:
 ```{r Strat plot}
 CreateVIXStratPlot <- function(data, DistributionSplit, SampleOneStartDate, SampleOneEndDate, SampleTwoStartDate, SampleTwoEndDate, MinTradeDays, NoTradeDaysToMinusBeg, TickerToPlot){
   
@@ -159,8 +179,142 @@ CreateVIXStratPlot <- function(data, DistributionSplit, SampleOneStartDate, Samp
 }
 ```
 
-The following code chunks create the conditional volatility and DCC plots:
-```{r VOLplots}
+## DCC-GARCH
+
+This code calculates the conditional volatiliies in preparation for the DCC estimations:
+```{r VOL calcs}
+
+rtn.1 <- Weekly_Ret %>% filter(Period == "Period_1") %>% mutate(Ticker = gsub(" Curncy", "", Ticker)) %>% 
+  # take out China and Malaysia -- currencies pegged until about 2005
+  filter(!Ticker %in% c("CNY")) %>% filter(!Ticker %in% c("MYR")) %>% 
+  select(-Period, -Name, -Value) %>% spread(Ticker, Weekly_Return) %>% tbl_xts()
+
+rtn.2 <- Weekly_Ret %>% filter(Period == "Period_2") %>% mutate(Ticker = gsub(" Curncy", "", Ticker)) %>%   
+  select(-Period, -Name, -Value) %>% spread(Ticker, Weekly_Return) %>% tbl_xts()
+
+rtn.1 <- rtn.1[-1,]
+rtn.2 <- rtn.2[-1,]
+
+# Center the data:
+rtn.1 <- scale(rtn.1,center=T,scale=F)
+rtn.2 <- scale(rtn.2,center=T,scale=F)
+
+# And clean it using Boudt's technique:
+rtn.1 <- Return.clean(rtn.1, method = c("none", "boudt", "geltner")[2], alpha = 0.01)
+rtn.2 <- Return.clean(rtn.2, method = c("none", "boudt", "geltner")[2], alpha = 0.01)
+
+# DCCPre
+DCCPre.1 <- dccPre(rtn.1, include.mean = T, p = 0)
+names(DCCPre.1)
+DCCPre.2 <- dccPre(rtn.2, include.mean = T, p = 0)
+names(DCCPre.2)
+
+# Change to usable xts
+Vol.1 <- DCCPre.1$marVol
+colnames(Vol.1) <- colnames(rtn.1)
+
+Vol.2 <- DCCPre.2$marVol
+colnames(Vol.2) <- colnames(rtn.2)
+
+#======================================================
+# VOLS
+# =====================================================
+
+# create the df of volatilities
+vol.df <-
+  bind_rows(
+    
+    data.frame( cbind( date = as.Date(index(rtn.1)), Vol.1)) %>% # Add date column which dropped away...
+      mutate(date = as.Date(date)) %>% tbl_df() %>% gather(Ticker, Sigma, -date) %>% 
+      mutate(Period = "Period 1"),
+    
+    data.frame( cbind( date = as.Date(index(rtn.2)), Vol.2)) %>% # Add date column which dropped away...
+      mutate(date = as.Date(date)) %>% tbl_df() %>% gather(Ticker, Sigma, -date) %>% 
+      mutate(Period = "Period 2")  ) %>% 
+  left_join(., cur.sample %>% mutate(Ticker = gsub(" Curncy", "", Ticker)), by = "Ticker")
+```
+
+The code contained in this code chunk is used to estimate the dynamic conditional correlations between the ZAR and other currencies in the sample:
+```{r DCC calcs}
+
+#==============================================================================
+# DCC
+# =============================================================================
+StdRes.1 <- DCCPre.1$sresi
+StdRes.2 <- DCCPre.2$sresi # save the residuals
+
+detach("package:rmsfuns", unload=TRUE)
+detach("package:tidyverse", unload=TRUE)
+detach("package:tbl2xts", unload=TRUE)
+
+# The DCC estimations take a while (I suggest a cup of coffee in the meantime)
+DCC.1 <- dccFit(StdRes.1, type="Engle")
+DCC.2 <- dccFit(StdRes.2, type="Engle")
+
+library(rmsfuns)
+load_pkg(c("tidyverse", "tbl2xts"))
+
+Rhot.1 <- DCC.1$rho.t
+Rhot.2 <- DCC.2$rho.t
+
+# Renaming function (see code cunk below for the function that renames columns in the correlation df)
+source("code/renamingdcc.R")
+
+# To see if the function works
+Rhot.1 <-
+  renamingdcc(ReturnSeries = rtn.1, DCC.TV.Cor = Rhot.1)
+
+Rhot.2 <-
+  renamingdcc(ReturnSeries = rtn.2, DCC.TV.Cor = Rhot.2)
+
+# Create the correlation dataframe
+df.corr <-
+  bind_rows(
+    Rhot.1 %>% mutate(Period = "Period 1"),
+    Rhot.2 %>% mutate(Period = "Period 2")) %>%
+  left_join(., cur.sample %>% mutate(Pairs = gsub(" Curncy", "", Ticker)) %>% 
+              mutate(Pairs = paste0("ZAR_", Pairs)), by = "Pairs") %>% filter(!is.na(Country)) %>% 
+  filter(Pairs != "ZAR_ZAR")
+
+```
+
+```{r renaming DCC}
+renamingdcc <- function(ReturnSeries, DCC.TV.Cor) {
+  
+  ncolrtn <- ncol(ReturnSeries)
+  namesrtn <- colnames(ReturnSeries)
+  paste(namesrtn, collapse = "_")
+  
+  nam <- c()
+  xx <- mapply(rep, times = ncolrtn:1, x = namesrtn)
+  
+  # Design a nested for loop to save the names corresponding to the columns of interest.
+  
+  
+  nam <- c()
+  for (j in 1:(ncolrtn)) {
+    for (i in 1:(ncolrtn)) {
+      nam[(i + (j-1)*(ncolrtn))] <- paste(xx[[j]][1], xx[[i]][1], sep="_")
+    }
+  }
+  
+  colnames(DCC.TV.Cor) <- nam
+  
+  # So to plot all the time-varying correlations wrt SBK:
+  # First append the date column that has (again) been removed...
+  DCC.TV.Cor <- 
+    data.frame( cbind( date = as.Date(index(ReturnSeries)), DCC.TV.Cor)) %>% # Add date column which dropped away...
+    mutate(date = as.Date(date)) %>% tbl_df() 
+  
+  DCC.TV.Cor <- DCC.TV.Cor %>% gather(Pairs, Rho, -date)
+  
+  DCC.TV.Cor
+  
+}
+```
+
+To plot the volatilities, by group of countries (i.e., BRICS, Asia, etc):
+```{r VOL plots}
 # BRICS
 ggplot(vol.df %>% filter(Group == "BRICS")) + 
   geom_line(aes(x = date, y = Sigma, color = Country), alpha = 0.6) + 
@@ -203,6 +357,7 @@ ggplot(vol.df %>% filter(Group == "Eastern Europe")) +
 
 ```
 
+To plot the DCCs, by group of countries:
 ```{r DCCplots}
 # BRICS
 g.corr.brics <-
@@ -253,8 +408,48 @@ g.corr.easterneurope <-
   labs(x = NULL)
 ```
 
-The final code contains the calculations needed to conclude whether EM currencies are indeed more closely correlated than the other 
-```{r correlation_calcs}
+The final code contains the calculations needed to conclude whether the ZAR is more closely correlated with other EM currencies during high VIX (and low VIX):
+```{r correlation calcs}
+
+# Use this df for creating your tables 
+df.corr.vix <-
+  df.corr %>% group_by(Period, Pairs) %>% 
+  mutate(Average_Period_Corr = mean(Rho, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  
+  left_join(., 
+            df.corr %>% filter(date %in% c(vix.high.period1.dates, vix.high.period2.dates)) %>% group_by(Pairs, Period) %>% 
+              summarise(Average_High_VIX = mean(Rho, na.rm = TRUE)) %>% ungroup(), by = c("Pairs", "Period")) %>% 
+  
+  left_join(., 
+            df.corr %>% filter(date %in% c(vix.low.period1.dates, vix.low.period2.dates)) %>% group_by(Pairs, Period) %>% 
+              summarise(Average_Low_VIX = mean(Rho, na.rm = TRUE)) %>% ungroup(), by = c("Pairs", "Period")) %>% 
+  select(Pairs, Period, Group, Country, Average_Period_Corr, Average_High_VIX, Average_Low_VIX) %>% unique() %>% 
+  arrange(Group) %>% rename(Sample_average = Average_Period_Corr, HighVIX = Average_High_VIX, LowVIX = Average_Low_VIX)
+
+# Create the high and low VIX dataframes
+High.VIX <-
+  CreateIVQuintileStratificationDates(data = data.str %>% filter(Ticker == "VIX Index"), 
+                                      DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                      SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10) %>% 
+  filter(State == "High") %>% 
+  group_by(Change) %>% 
+  filter(date == first(date) | date == last(date)) %>% 
+  mutate(DateType = ifelse(date == first(date), "StartDate", "EndDate")) %>% 
+  select(Change, Period, date, DateType) %>% 
+  spread(DateType, date) %>% ungroup() 
+
+Low.VIX <-
+  CreateIVQuintileStratificationDates(data = data.str %>% filter(Ticker == "VIX Index"), 
+                                      DistributionSplit = 0.2, SampleOneStartDate, SampleOneEndDate, 
+                                      SampleTwoStartDate, SampleTwoEndDate, MinTradeDays = 30, NoTradeDaysToMinusBeg = 10) %>% 
+  filter(State == "Low") %>% 
+  group_by(Change) %>% 
+  filter(date == first(date) | date == last(date)) %>% 
+  mutate(DateType = ifelse(date == first(date), "StartDate", "EndDate")) %>% 
+  select(Change, Period, date, DateType) %>% 
+  spread(DateType, date) %>% ungroup() 
+
 
 ```
 

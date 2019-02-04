@@ -1,5 +1,5 @@
 ---
-title: "Emerging Market Currency Comovement: an analysis of conditional correlations before and after the GFC and during periods of heightened economic uncertainty"
+title: "Emerging Market Currency Co-movement: an analysis of dynamic conditional correlations before and after the GFC and during periods of heightened economic uncertainty"
 Author1: Peter Hirst
 Author2: Charlotte van Tiddens
 output:
@@ -23,14 +23,14 @@ Ref1: Stellenbosch University, South Africa
 Ref2: Prescient Securities, Cape Town, South Africa
 RemovePreprintSubmittedTo: yes
 abstract: |
-  This paper analyses emerging market (EM) currency co-movement, during different periods of global uncertainty. After stratifying the data for periods of high and low uncertainty using the CBOE Volatility Index (VIX), we use Dynamic Conditional Correlation (DCC), proposed by @engle2002 to compare co-movement during these periods to the sample average. The aim is to uncover crucial dynamics between these currencies, specifically between the South African Rand (ZAR) and other currencies. The main purpose for the study is that these correlations directly influence investors and currency traders. Using EM currency data from four groups of economies from 2002 to 2018, the paper finds that find that conditional correlations increase significantly following the financial crisis. However, we do not find significant differences during periods of high and low uncertainty. Currency traders should thus look to other factors than the VIX when making EM currency investment decisions. 
+  This paper analyses emerging market currency co-movement, during different periods of global uncertainty. First we calculate dynamic conditional correlations before and after the global financial crisis between the Rand and several emerging market currencies. Then we stratify the CBOE Volatility Index (VIX) into quantiles for the two periods and compare the sample average conditional correlations to the average conditional correlations during periods of high and low VIX. The research is intended to be of relevance to investors managing portfolios with a high degree of exposure to EM countries. Using EM currency data from four groups of economies from 2002 to 2018, the paper finds that find that conditional correlations increase significantly following the financial crisis. However, we do not find significant differences during periods of high and low uncertainty, which suggests there may be other factors driving EM currency co-movement.
 addfootrule: yes
 addtoprule: yes
 bibliography: Tex/ref.bib
 bottom: 2
 documentclass: elsarticle
 fontsize: 11pt
-keywords: Currency co-movement \sep Global uncertainty \sep EMEs \sep DCC \sep GARCH
+keywords: Currency co-movement \sep Global uncertainty \sep Emerging markets \sep DCC \sep GARCH
 linenumbers: no
 linestretch: 1.2
 link-citations: yes
@@ -159,14 +159,12 @@ source("code/CorrelationCalcs.R")
 <!-- ############################## -->
 
 # Introduction \label{Introduction}
-The purpose of this paper is to model the co-movement between EM currencies, during differing periods of uncertainty. We employ @engle2002's Dynamic Conditional Correlation (DCC) model, to describe time-varying correlation and volatility. The main aim of the study to see whether currencies are more closely correlated during heightened global uncertainty. However more generally, the paper discusses the relationships between ZAR and other groups of EM currencies. Our focus is on the _ZAR's_ correlation with the rest of the currencies in our sample. Naturally, our question has important consequences for currency traders, which provides good motivation to investigate the topic in more detail. For instance, if the ZAR is strongly positively (negatively) correlated with the Brazilian Real (BRL) when the VIX is higher than usual, then it would be sensible to sell (buy) BRL, as a diversification strategy.
+The purpose of this paper is to model the co-movement between emerging market (EM) currencies, during differing periods of uncertainty. We employ @engle2002's Dynamic Conditional Correlation (DCC) approach, to describe time-varying correlation and volatility. The main aim of the study to see whether currencies are more closely correlated during heightened global (economic) uncertainty. However more generally, the paper discusses the relationships between ZAR and other groups of EM currencies. Our focus is on the _ZAR's_ correlation with the rest of the currencies in our sample. Naturally, our question has important consequences for currency traders, which provides good motivation to investigate the topic in more detail. For instance, if the ZAR is strongly positively (negatively) correlated with the Brazilian Real (BRL) when the CBOE  Volatility Index (VIX) is higher than usual, then it would be sensible to sell (buy) BRL, as a diversification strategy.
 
-The layout of the rest of this paper is as follows: section \ref{lit_review} discusses relevant literature concerning financial contagion and currency correlation. Section \ref{data} discusses the data used and section \ref{methodology} describes the methodology used to model currency co-movement. Section \ref{results} reports the results and section \ref{conclusion} concludes and provides some recommendations to fund managers.
+The layout of the rest of this paper is as follows: Section \ref{data} discusses the data used, subset as well as the stratification method. Section \ref{methodology} describes the methodology used to model currency co-movement. Section \ref{results} reports the results and section \ref{conclusion} concludes and provides some recommendations to fund managers.^[Paper written using the "Texevier" package developed by @katzke2016.]
 
-# Literature review \label{lit_review}
- 
 # Data \label{data} 
-The data includes EM currencies from 2002 to 2018. The currencies are grouped into four categories, namely BRICS, Asia, South America and Eastern Europe.^[This grouping convention is drawn from @katzke2017.] Although the data is of daily frequency, we calculate the weekly returns to avoid the noise present in currency returns. Note that given the use of currency data, a positive return is synonymous with "depreciation", whereas a negative return is synonymous with a "depreciation". Furthermore, all currencies are measured relative to the United States dollar (USD). 
+The data includes EM currencies from 2002 to 2018. The currencies are grouped into four categories, namely BRICS, Asia, South America and Eastern Europe. Although the data is of daily frequency, we calculate the weekly returns to avoid the noise present in currency returns. Note that given the use of currency data, a positive return is synonymous with "depreciation", whereas a negative return is synonymous with a "depreciation". Furthermore, all currencies are measured relative to the United States dollar (USD). 
 
 Table \ref{tabsumstats} in the appendix reports the summary statistics (mean and standard deviation) for all of the currencies in our sample.^[Refer to table \ref{tabsample} in the appendix for the full list of currencies considered.] The summary statistics suggests that currency values (quotes) relative to the USD vary greatly, whereas the average weekly returns (and their corresponding standard deviations) are generally very low. This makes sense given that the weekly return calculation strips out the noise present in daily returns.
 
@@ -242,8 +240,8 @@ Q_t &= \bar{Q}(1-a-b)+a(z_t'z_t)+b(Q_{t-1}) \notag \\
                         R_t &= Diag(Q_t^{-1}).Q_t.Diag({Q_t}^{-1}) \notag \\
                         \end{align}
 
-# Dynamic Conditional Correlations
-Next we use the methodology discussed in section \ref{methodology} to estimate the dynamic conditional correlations.^[We omit China and Malaysia for Period 1 because their currencies were pegged to the USD until approximately 2005. Their inclusion induces zero returns for Period 1.] Our focus is on the bivariate correlation between ZAR and the rest of the currencies in the sample. However, in this section we only report the results for the BRICS economies. The full set of results is contained in the appendix.
+# Results \label{results}
+Next, we use the methodology discussed in section \ref{methodology} to estimate the dynamic conditional correlations.^[We omit China and Malaysia for Period 1 because their currencies were pegged to the USD until approximately 2005. Their inclusion induces zero returns for Period 1.] Our focus is on the bivariate correlation between ZAR and the rest of the currencies in the sample. However, in this section we only report the results for the BRICS economies. The full set of results is contained in the appendix.
 
 Using the univariate GARCH methodology, figure \ref{bricsvol} plots the conditional volatilities for all BRICS currencies for both periods. 
 ```{r volplotbrics, warning=FALSE, fig.align='center', fig.cap="BRICS conditional volatility \\label{bricsvol}", fig.height=3, fig.width=6}
@@ -256,7 +254,7 @@ ggplot(vol.df %>% filter(Group == "BRICS")) +
   ylim(0, 0.05) +
   labs(x = NULL)
 ```
-Figure \ref{bricsvol} suggests that prior to the financial crisis (Period 1), the BRL was the most volatile BRICS currency whereas the ZAR was the most stable of the group. However, the story changed somewhat in the post-crisis era (Period 2): the Chinese Renminbi (CNY), no longer pegged to the USD, remained the most stable currency of the group, whereas the ZAR and remaining BRICS currencies became markedly more volatile. The results suggest that the most volatile currency groupings are BRICS and South America.
+Figure \ref{bricsvol} suggests that prior to the financial crisis (Period 1), the BRL and the ZAR were the most volatile BRICS currencies whereas the Indian Rupee (INR) and the Russian Ruble (RUB). However, the story changed somewhat in the post-crisis era (Period 2): the Chinese Renminbi (CNY), no longer pegged to the USD, remained the most stable currency of the group, whereas the RUB became markedy more volatile. Furthermore, the remaining BRICS currencies became more _unstable_, not necessarily more volatile. The results suggest, descriptively, that the most volatile currency groupings are BRICS and South America.
 
 Turning to the DCC estimations, figure \ref{bricsdcc} plots the ZAR's dynamic conditional correlation with the other BRICS currencies.
 ```{r dccplotbrics, warning=FALSE, fig.align='center', fig.cap="BRICS dynamic conditional correlation \\label{bricsdcc}", fig.height=3, fig.width=6}
@@ -264,9 +262,9 @@ print(g.corr.brics)
 ```
 The pre-crisis estimations suggest seemingly constant correlation over the period at approximately $0.25$ (one might argue in favour of a slight increase in correlation in Period 1). Following the crisis, correlations doubled all except for the CNY which had recently switched to a flexible exchange rate regime. The plot clearly shows the ZAR being most highly correlated with the BRL, Russian Ruble (RUB) and Indian Rupee (INR), respectively. These three bivariate correlations hover around the $0.50$ mark, which implies that a two per cent appreciation in the ZAR results in a one per cent appreciation in the BRL, RUB and INR, on average. This is indeed a high correlation.
 
-An interesting note on the DCC results^[See the appendix (section \ref{appendix}).] is that Period 2 conditional correlations seem higher than Period 1. This could suggest a structural change in EM currency correlations following the financial crisis. * Discuss the QE effects on co-movement.
+An interesting note on the DCC results^[See the appendix (section \ref{appendix}).] is that Period 2 conditional correlations are significantly higher than Period 1. This result is also found by @katzke2017. This could suggest a structural change in EM currency correlations following the GFC. @katzke2017 note the significance of quantitative easing between 2013 and 2016, which drove asset prices and currencies closer to one another. Carry trade, which refers to a trading strategy that exploits cross-country interest rate differentials, may also explain a great deal of the increased EM currency co-movement. Given lower interest rates in the US (as well as Japan, UK and EU), investors borrowed in these countries to invest in high-yielding EMs, such as South Africa and Brazil, which fuelled the observed co-movement.
 
-To see whether the correlations increase during times of heightened uncertainty, we plot the DCC estimations and overlay the dates which we consider as 'high-VIX' and 'low-VIX'. Figure \ref{bricsvix} suggests that we should not downplay an increase in correlation during 'high-VIX' periods. This follows as eyeballing the figure could suggest that correlations creep up during more uncertain times.
+To see whether the correlations increase during times of heightened economic uncertainty, we plot the DCC estimations and overlay the dates which we consider as 'high VIX' and 'low VIX'. Figure \ref{bricsvix} suggests that we should not downplay an increase in correlation during 'high VIX' periods. This follows as eyeballing the figure could suggest that correlations creep up during more uncertain times (red overlay).
 ```{r, dccplotvix, warning=FALSE, fig.align='center', fig.cap="BRICS dynamic conditional correlation \\label{bricsvix}", fig.height=3, fig.width=6}
 ggplot(df.corr %>% filter(Group == "BRICS")) + 
   geom_line(aes(x = date, y = Rho, color = Country), alpha = 0.6, size = 1) + 
@@ -281,37 +279,59 @@ ggplot(df.corr %>% filter(Group == "BRICS")) +
   labs(x = NULL, caption = "Green: high VIX, red: low VIX")
 ```
 
-
-However, when calculating average sample correlations, as well as these correlations for high and low-VIX periods, we do not find significant differences in these periods.^[Table \ref{pairwise} in the appendix contains the average pairwise correlations, for the full sample and during times of high and low uncertainty.] Hence, we must conclude that the ZAR is _not_ more closely correlated with other EM currencies when the VIX is in its top quintile (or in the bottom quintile, for that matter). What we do find, however, is that following the GFC, EM currencies became much more correlated than before.
+However, when calculating average sample correlations and comparing them to correlations for high and low VIX periods, we do not find significant differences.^[Table \ref{pairwise} in the appendix contains the average pairwise correlations, for the full sample and during times of high and low VIX.] Hence, we must conclude that the ZAR is _not_ more closely correlated with other EM currencies when the VIX is in its top quintile (or in the bottom quintile, for that matter). Of course, this conclusion is only reached by using our method of calculating average correlations (full sample and stratified dates). What we do find, however, is that following the GFC, EM currencies became much more correlated than before. This fact emerges strongly from the DCC plots in section \ref{dcc_groups}. 
 
 # Conclusion \label{conclusion}
-[Conclusion to be written here.]
+This paper studies EM currency co-movement, using @engle2002's dynamic conditional correlation approach. After subsetting the sample into two periods (before and after the financial crisis), we model the co-movement (bivariate correlation) between the Rand and 19 other EM currencies using the DCC-GARCH framework. Our findings suggest higher post-crisis correlation, which could be induced by large-scale asset purchases (quantitative easing) in the United States or other factors, such as high yield differentials and resulting carry trade. Thereafter, we stratify the VIX into quantiles and consider the top quantile 'high VIX' (uncertainty) and the bottom quantile 'low VIX' (uncertainty). After calculating the average correlations for these periods and comparing it to the average for the full sample period, we find very few changes. Therefore, our study suggests that higher-than-usual (or lower-than-usual) economic uncertainty does not result in higher EM currency co-movement. Investors should therefore rely on factors other than economic uncertainty when making strategic investment decisions.
+
 \newpage
 
 # Appendix \label{appendix}
 
 ## Summary statistics
 ```{r sumstats, results='asis'}
-
-df.summary.stats <- 
-    data.cur %>% group_by(Period, Ticker) %>%  arrange(date, Ticker) %>%
+# Period 1
+df.summary.stats.1 <- 
+    data.cur %>% group_by(Period, Ticker) %>% arrange(date, Ticker) %>% filter(Period == "Period_1") %>% 
     filter(format(date, "%a") == "Wed") %>% 
     mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
     mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
     ungroup() %>% group_by(Ticker) %>% 
-    summarise(MeanValue = mean(Value), SdValue = sd(Value), 
-    MeanReturns = mean(Weekly_Return), SdReturns = sd(Weekly_Return))
+    summarise(Mean = mean(Weekly_Return), StandardDeviation = sd(Weekly_Return))
 
-df.sum.stats <- 
-  xtable(df.summary.stats, caption = "Summary statistics: currency data \\label{tabsumstats}")
+df.sum.stats.1 <- 
+  xtable(df.summary.stats.1, caption = "Period 1 returns \\label{tabsumstats1}")
 
-print.xtable(df.sum.stats, 
+print.xtable(df.sum.stats.1,
               tabular.environment = "longtable",
              floating = FALSE,
              table.placement = 'H', 
              # scalebox = 0.3, 
              comment = FALSE,
-             caption.placement = 'bottom'
+             caption.placement = 'bottom',
+             digits = 3
+             )
+
+# Period 2
+df.summary.stats.2 <- 
+    data.cur %>% group_by(Period, Ticker) %>% arrange(date, Ticker) %>% filter(Period == "Period_2") %>% 
+    filter(format(date, "%a") == "Wed") %>% 
+    mutate(Weekly_Return = Value / lag(Value) - 1) %>% 
+    mutate(Weekly_Return = coalesce(Weekly_Return, 0)) %>%  # Set NA to Zero.
+    ungroup() %>% group_by(Ticker) %>% 
+    summarise(Mean = mean(Weekly_Return), StandardDeviation = sd(Weekly_Return))
+
+df.sum.stats.2 <- 
+  xtable(df.summary.stats.2, caption = "Period 2 returns \\label{tabsumstats2}")
+
+print.xtable(df.sum.stats.2, 
+              tabular.environment = "longtable",
+             floating = FALSE,
+             table.placement = 'H', 
+             # scalebox = 0.3, 
+             comment = FALSE,
+             caption.placement = 'bottom',
+             digits=3
              )
 ```
 
@@ -384,7 +404,7 @@ ggplot(vol.df %>% filter(Group == "Eastern Europe")) +
 
 
 ```
-## Dynamic Conditional Correlations
+## Dynamic Conditional Correlations \label{dcc_groups}
 ```{r dcc1, warning=FALSE, fig.align='center', fig.cap="ZAR-BRICS DCC \\label{dcc1}", fig.height=3, fig.width=6, include=TRUE}
   print(g.corr.brics)
 ```
